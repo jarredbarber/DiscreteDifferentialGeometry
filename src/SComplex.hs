@@ -9,20 +9,19 @@ import qualified Data.Set as Set
 type Simplex a = [a]
 
 class BoundaryOperator a where
-    boundary :: a -> [a]
-
--- sends, e.g., [1,2,3,4] to [[1,2,3,4],[2,3,4],[3,4],[4],[]]
-rep :: [a] -> [[a]]
-rep [] = []
-rep (x:xs) = [x:xs] ++ (rep xs)
+  boundary :: a -> [a]
 
 -- The boundary operator maps a simplex to its boundary, which is a list of simplices of one lower order
 instance BoundaryOperator (Simplex a) where
     -- boundary :: Simplex a -> [Simplex a]
     boundary [] = []
     boundary (_:[]) = []
-    boundary vlist = map (take (l - 1)) $ take l $ rep $ cycle vlist
-        where l = length vlist
+    boundary vlist =  let l = length vlist
+                          -- maps [1,2,3] to [[1,2,3],[2,3],[3]]
+                          rep [] = []
+                          rep (x:xs) = [x:xs] ++ (rep xs)
+                      in
+                        map (take (l - 1)) $ take l $ rep $ cycle vlist
 
 -- boundary, boundary^2, etc
 iterateBoundary :: Simplex a -> [Simplex a]

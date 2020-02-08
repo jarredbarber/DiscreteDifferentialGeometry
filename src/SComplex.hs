@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances #-}
-module SComplex (Simplex, SComplex, boundary, empty, insert, fromList, union, faces, star)
+module SComplex (Simplex, SComplex, boundary, empty, insert, fromList, union, faces, star, orientable, order)
 where
 
 import qualified Data.Map.Strict as Map
@@ -10,9 +10,6 @@ type Simplex a = [a]
 
 class BoundaryOperator a where
     boundary :: a -> [a]
-
-null :: Simplex a
-null = []
 
 -- sends, e.g., [1,2,3,4] to [[1,2,3,4],[2,3,4],[3,4],[4],[]]
 rep :: [a] -> [[a]]
@@ -36,10 +33,10 @@ iterateBoundary s =
     b ++ (>>=) b iterateBoundary
 
 -- A simplical complex is a collection of simplices, plus all of their boundaries
-data SComplex a = SComplex { parents::Map.Map (Simplex a) (Set.Set (Simplex a)) }
+data SComplex a = SComplex { order::Int, orientable::Bool, parents::Map.Map (Simplex a) (Set.Set (Simplex a)) }
   deriving (Show)
 
-empty = SComplex { parents=Map.empty }
+empty = SComplex { order=0, orientable=True, parents=Map.empty }
 
 insert :: (Ord a) => Simplex a -> SComplex a -> SComplex a
 insert [] sc = sc
@@ -51,7 +48,9 @@ insert s sc =
   in
     -- sc' has all of the children of s inserted properly.
     -- Now, let's link up the direct children with s
-    SComplex { parents=Map.insert s Set.empty $ foldl inserter (parents sc') b }
+    SComplex { order=max ((length s) - 1) (order sc')
+             , orientable=(orientable sc') && (not $ Map.member (reverse s) (parents sc))
+             , parents=Map.insert s Set.empty $ foldl inserter (parents sc') b }
 
 fromList :: (Ord a, Foldable t) => t (Simplex a) -> SComplex a
 fromList = foldl (flip insert) empty
@@ -63,5 +62,7 @@ union sc1 sc2 =
 faces :: SComplex a -> Int -> [Simplex a]
 faces sc o = filter ((==) o . length) $ Map.keys . parents $ sc
 
+-- pre-image of the boundary operator
 star :: (Ord a) => SComplex a -> Simplex a -> Maybe [Simplex a]
 star sc s = fmap Set.toList $ Map.lookup s $ parents sc
+
